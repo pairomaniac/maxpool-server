@@ -1,0 +1,36 @@
+// Minimum working settings for ultra_server.exe (Maximum Pool).
+//
+// This file is a script that is parsed AND EXECUTED at startup, not an INI
+// file. A parse error leaves everything below it undefined - watch for
+// "Input was processed up to line N."
+
+protocol    = "UDP";
+port        = 35000;
+
+// Required. This exact value identifies Maximum Pool; a wrong GUID means the
+// server receives client probes and silently ignores them, and a blank one
+// means it refuses to start.
+game_guid   = "E6666EA0-DBB2-11D2-A771-006097C3E986";
+
+server_name = "CHANGEME";
+welcome     = "Welcome";
+
+service_name = "ultra_server";
+
+// 0 = WON.net filter, 1 = Beep, 2 = Comic.
+// Any other value creates no filter object at all.
+filter_style    = 2;
+clean_word_list = "cleanwords.lst";
+dirty_word_list = "dirtywords.lst";
+
+max_players = 32;
+max_games   = 8;
+
+// Uncomment for a remote console. Password is arbitrary.
+// Max 2 sessions, 60 min idle timeout.
+// enableTelnet ("CHANGEME", 47807);
+
+// No meta_server lines: those register with the WON Titan directory, which has
+// been dead since 2007. Nothing depends on them.
+
+print ("Server \"" + server_name + "\" starting on port " + istr(port) + ".\n");

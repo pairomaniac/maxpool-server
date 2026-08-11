@@ -1,0 +1,12 @@
+# Max Pool meta server list.
+#
+# One game server per line:  <host-or-ip> <port>
+# Port must match "port" in ultra_server.scs (default 35000).
+# Blank lines and lines starting with # are ignored.
+#
+# Re-read on every request - edit freely, no restart needed.
+#
+# The address here is handed straight to clients, so it must be an address
+# they can actually reach. Behind NAT, use the public address, not the LAN one.
+
+CHANGEME.example.invalid 35000

@@ -1,0 +1,4 @@
+maxpool_meta_server
+*.o
+servers.conf
+ultra_server.scs

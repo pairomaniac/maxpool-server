@@ -1,0 +1,17 @@
+[Unit]
+Description=Max Pool meta server
+After=network.target
+
+[Service]
+ExecStart=/usr/local/bin/maxpool_meta_server -f /etc/maxpool/servers.conf
+Restart=on-failure
+DynamicUser=yes
+ReadOnlyPaths=/etc/maxpool
+AmbientCapabilities=
+NoNewPrivileges=yes
+ProtectSystem=strict
+ProtectHome=yes
+PrivateTmp=yes
+
+[Install]
+WantedBy=multi-user.target

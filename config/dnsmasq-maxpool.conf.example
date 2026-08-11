@@ -1,0 +1,13 @@
+# Both names must resolve to the machine running maxpool_meta_server.
+#
+# The client requires a CNAME + A answer with a non-zero TTL. A bare A record
+# is rejected: the name resolves and the client then never sends anything to
+# UDP 6003, with nothing logged anywhere.
+
+local-ttl=300
+
+cname=coolpool.east.won.net,coolpool.east
+cname=coolpool.west.won.net,coolpool.west
+
+host-record=coolpool.east,CHANGEME
+host-record=coolpool.west,CHANGEME
