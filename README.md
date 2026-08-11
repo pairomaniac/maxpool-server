@@ -6,21 +6,10 @@ Tools and notes for running your own Maximum Pool game server and meta server.
 
 ## Credit
 
-The meta server here is based on **Shuouma's** Max Pool meta server, released
-in 2017. He reverse-engineered the protocol and wrote the original — the packet
-format, request validation and header layout are his work. The modification in
-this repo only replaces a hardcoded hostname with a config file.
-
-His original copyright header is preserved in `src/maxpool_meta_server.c`, and
-the upstream license ships as `LICENSE.upstream`.
-
-Original source: the Server Software page at <https://dreamcastlive.net/>
-
-> **Licensing note:** the upstream release is internally inconsistent — it ships
-> an MIT `LICENSE` file, while `maxpool_meta_server.c` itself carries a GPLv2
-> header. Both are preserved here exactly as distributed and nothing has been
-> relicensed. This repository's own `LICENSE` covers the material original to
-> it; the meta server remains under whichever of the upstream terms applies.
+The meta server is Shuouma's — he wrote the original and reverse-engineered the
+protocol. This version just swaps the hardcoded hostname for a config file.
+Original on the Server Software page at <https://dreamcastlive.net/>; his
+copyright header and license ship as-is.
 
 `ultra_server.exe` is proprietary Sierra Entertainment software and is **not**
 included here. Get it from the Dreamcast Live / Dreamcast-Talk server software

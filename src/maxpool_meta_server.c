@@ -1,52 +1,26 @@
 /*
  * Max Pool meta (master) server.
  *
- * ---------------------------------------------------------------------------
- * ORIGINAL WORK
+ * Based on the Max Pool meta server by Shuouma <dreamcast-talk.com>,
+ * Copyright 2017. He wrote the original and reverse-engineered the protocol;
+ * this version reads the server list from a file at runtime instead of using
+ * a hardcoded hostname, and adds -p / -f / -v flags and logging. Wire format
+ * is unchanged.
  *
- *   Copyright 2017 Shuouma <dreamcast-talk.com>
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation; either version 2 of the License, or
+ * (at your option) any later version.
  *
- *   This file is a modified version of the Max Pool meta server written and
- *   released by Shuouma. The protocol work - packet format, request
- *   validation, header layout - is his.
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
  *
- *   Upstream: https://dreamcastlive.net/  (Server Software page)
- * ---------------------------------------------------------------------------
- *
- * MODIFICATIONS
- *
- *   The original hardcoded a single game server hostname in
- *   create_server_list(). This version reads the server list from a text file
- *   at runtime instead, re-read on every request, and adds -p / -f / -v flags
- *   and timestamped logging.
- *
- *   The wire format is unchanged and byte-for-byte compatible with the
- *   original: 15-byte header, then N * 6 bytes of (port BE16, ipv4 BE32),
- *   with the server-count field at [12..13] left little-endian as upstream
- *   had it.
- *
- * LICENSE
- *
- *   Upstream ships an MIT LICENSE file while this source file carries a
- *   GPLv2 header. Both notices are preserved here and in the repository
- *   (LICENSE.upstream); no relicensing has been attempted. The repository's
- *   own LICENSE applies to material original to it, not to this file.
- *   See README.
- *
- *   This program is free software; you can redistribute it and/or modify
- *   it under the terms of the GNU General Public License as published by
- *   the Free Software Foundation; either version 2 of the License, or
- *   (at your option) any later version.
- *
- *   This program is distributed in the hope that it will be useful,
- *   but WITHOUT ANY WARRANTY; without even the implied warranty of
- *   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- *   GNU General Public License for more details.
- *
- *   You should have received a copy of the GNU General Public License
- *   along with this program; if not, write to the Free Software
- *   Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston,
- *   MA 02110-1301, USA.
+ * You should have received a copy of the GNU General Public License
+ * along with this program; if not, write to the Free Software
+ * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston,
+ * MA 02110-1301, USA.
  */
 
 #include <stdio.h>
