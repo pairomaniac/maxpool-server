@@ -6,14 +6,12 @@ Tools and notes for running your own Maximum Pool game server and meta server.
 
 ## Credit
 
-The meta server is Shuouma's — he wrote the original and reverse-engineered the
-protocol. This version just swaps the hardcoded hostname for a config file.
-Original on the Server Software page at <https://dreamcastlive.net/>; his
-copyright header and license ship as-is.
+The meta server is Shuouma's. He reverse-engineered the protocol and wrote the original. This
+version swaps the hardcoded hostname for a config file. Original on the Server Software page at
+<https://dreamcastlive.net/>; his copyright header and license ship as-is.
 
-`ultra_server.exe` is proprietary Sierra Entertainment software and is **not**
-included here. Get it from the Dreamcast Live / Dreamcast-Talk server software
-pages.
+`ultra_server.exe` is Sierra's, so it isn't included here. Grab it from the Dreamcast Live or
+Dreamcast-Talk server software pages.
 
 ---
 
@@ -34,15 +32,15 @@ Clients reach the meta server by resolving `coolpool.east.won.net` and `coolpool
 
 ### game_guid
 
-Required, and it must be this exact value — it's what distinguishes Maximum Pool from Cool Pool,
-and the client sends it in every probe. A wrong GUID means the server receives packets and
-silently ignores them; a blank one means it won't start at all.
+Has to be this exact value. It's what tells Maximum Pool apart from Cool Pool, and the client
+sends it in every probe. Wrong GUID and the server ignores everything it receives. Blank and it
+won't start.
 
 ```
 game_guid = "E6666EA0-DBB2-11D2-A771-006097C3E986";
 ```
 
-Config files floating around are usually blank templates with Cool Pool's leftovers in them.
+Most .scs files you'll find are blank templates with Cool Pool's leftovers still in them.
 
 ### Minimum ultra_server.scs
 
@@ -63,11 +61,11 @@ max_players = 32;
 max_games   = 8;
 ```
 
-Drop any `meta_server1` / `meta_server2` lines — they point at the dead WON Titan registry and
-only produce `Could not find host` noise.
+Delete any `meta_server1` / `meta_server2` lines. They point at the WON Titan registry, dead since
+2007, and only produce `Could not find host` noise.
 
-The `.scs` is a script that runs at startup, not an INI file. A parse error leaves everything
-below it undefined; watch for `Input was processed up to line N.`
+The `.scs` is a script that runs at startup, not an INI file. A parse error leaves everything below
+it undefined. Watch for `Input was processed up to line N.`
 
 ### Running
 
@@ -75,9 +73,9 @@ below it undefined; watch for `Input was processed up to line N.`
 wine ultra_server.exe -run
 ```
 
-`-run` is required. Without arguments it prints usage and then tries to attach to the Windows
-service manager, which looks like it quit for no reason. Run it from its own directory — the
-settings filename is hardcoded and resolved relative to the working directory.
+`-run` is required. With no arguments it prints usage and then tries to attach to the Windows
+service manager, which just looks like it quit for no reason. Run it from its own directory, since
+the settings filename is hardcoded and resolved against the working directory.
 
 Healthy startup:
 
@@ -88,8 +86,8 @@ Game Server Version: 102
 Max Players: 32 -- Max Games: 8
 ```
 
-No `Creating transport ultra_server failed` means the socket bound. Confirm with
-`ss -lunp | grep 35000`.
+If you don't see `Creating transport ultra_server failed`, the socket bound. `ss -lunp | grep 35000`
+confirms it.
 
 ### Telnet console
 
@@ -123,7 +121,7 @@ cp config/servers.conf.example servers.conf   # then edit it
 ./maxpool_meta_server -f servers.conf -v
 ```
 
-`servers.conf` — one server per line, `<host-or-ip> <port>`:
+`servers.conf`, one server per line, `<host-or-ip> <port>`:
 
 ```
 pool.example.com 35000
@@ -142,9 +140,9 @@ s.sendto(bytes([5,2,0,0x66,0,0x0a,0,0,4]),('127.0.0.1',6003))
 print(binascii.hexlify(s.recvfrom(1024)[0],' ').decode())"
 ```
 
-One entry = 21 bytes: 15-byte header, then big-endian port + IPv4. The last 6 bytes are the
-address you're handing out — read them to catch a stale `servers.conf`, which otherwise fails
-silently (client probes a dead address, list comes up empty, nothing logs an error).
+One entry = 21 bytes: 15-byte header, then big-endian port + IPv4. The last 6 bytes are the address
+you're handing out. Reading them catches a stale `servers.conf`, which otherwise fails silently:
+the client probes a dead address, the list comes up empty, and nothing logs an error.
 
 ---
 
@@ -155,18 +153,19 @@ Both names must resolve to the meta server:
 - `coolpool.east.won.net`
 - `coolpool.west.won.net`
 
-**The answer needs a CNAME plus an A record, and a non-zero TTL.** A bare A record is rejected —
+**The answer needs a CNAME plus an A record, and a non-zero TTL.** A bare A record gets rejected:
 the client resolves the name and then never sends anything to port 6003, with nothing logged
-anywhere. The original servers answer with `CNAME coolpool.east.` + A, and matching that shape
-works.
+anywhere to tell you why. The original servers answered with `CNAME coolpool.east.` + A, and
+matching that works.
 
-(Untested which of the two the client actually cares about, the record shape or the TTL. Setting
-both works.)
+Untested which of the two the client actually cares about, the record shape or the TTL. Setting
+both works.
 
-`auriga.segasoft.com` is queried too, gets NXDOMAIN, and the client carries on. Leave it.
+`auriga.segasoft.com` gets queried too. It returns NXDOMAIN and the client carries on, so leave it
+alone.
 
-Ideally these records live in the community DNS that DreamPi already points at, so players need
-no client-side configuration at all. Until then, either run your own resolver or override locally.
+Best case these records live in the community DNS that DreamPi already points at, so players don't
+have to configure anything. Until then, run your own resolver or override locally.
 
 ### dnsmasq example
 
@@ -180,8 +179,8 @@ host-record=coolpool.east,<meta server IP>
 host-record=coolpool.west,<meta server IP>
 ```
 
-On a DreamPi this goes in the Pi's dnsmasq config. On other setups, point the Dreamcast's DNS at
-whatever resolver holds these records.
+On a DreamPi this goes in the Pi's dnsmasq config. Otherwise point the Dreamcast's DNS at whatever
+resolver holds the records.
 
 ---
 
@@ -204,13 +203,14 @@ UDP 124 bytes  game:35000 -> client
 | Chain stops at | Cause |
 |---|---|
 | No DNS query arrives | Client isn't using your resolver |
-| Resolves, no 6003 packet | Bare A record — needs CNAME + non-zero TTL |
+| Resolves, no 6003 packet | Bare A record, needs CNAME + non-zero TTL |
 | 6003 request, no reply | Meta server not running, or port taken |
 | Probes hit 35000, no reply | Wrong or missing `game_guid` |
 | Client probes the wrong IP | Stale `servers.conf` |
 
 The 29-byte probe carries the game GUID in its last 16 bytes, little-endian on the first three
-fields. If another title ever needs a GUID nobody has, capture a probe and read it out:
+fields. If another title ever needs a GUID nobody has written down, capture a probe and read it
+straight off the wire:
 
 ```bash
 sudo tcpdump -ni any -X 'udp port 35000' -c 4
