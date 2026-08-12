@@ -276,3 +276,8 @@ sudo systemctl enable --now maxpool-meta-server
 ```
 
 Open UDP 6003 and TCP 15101 on the meta server host, and UDP 35000 wherever the game server runs.
+
+---
+
+Built with LLM assistance, against real hardware and packet captures. Anything in `docs/protocol.md`
+that wasn't verified on the wire says so. Corrections welcome.
