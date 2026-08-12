@@ -1,8 +1,8 @@
 # The Max Pool meta server protocol
 
 Maximum Pool's server browser speaks WON Titan, the directory service Sierra
-used across its 1999-2001 online titles. Formats below are checked against the
-WON/Titan SDK sources (see Credit in the README) and live captures.
+used across its 1999-2001 online titles. Formats below are checked against
+Sierra's Titan SDK sources (see Credit in the README) and live captures.
 
 Little-endian unless noted. Nothing is encrypted or authenticated.
 

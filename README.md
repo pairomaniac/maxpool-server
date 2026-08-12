@@ -9,8 +9,12 @@ Tools and notes for running your own Maximum Pool game server and meta server.
 The meta server here is derived from Shuouma's, on the Server Software page at
 <https://dreamcastlive.net/>. His copyright header and license ship as-is.
 
-Packet formats in `docs/protocol.md` were checked against the archived WON/Titan SDK sources at
-<https://github.com/madebr/WON> (forked from kin37ik/WON).
+Packet formats in `docs/protocol.md` were checked against Sierra's own WON/Titan SDK sources,
+archived at <https://github.com/drhax9908/world-opponent-network> (an export of the defunct
+code.google.com/p/world-opponent-network project, and the root of the WON forks on GitHub). The
+message classes used here are `SMsgDirG2MultiEntityReply`, `SMsgDirG2AddService` and `DirEntity`
+under `TitanApi/msg/Dir/`. The SDK itself is Sierra's, redistributed by that project without a
+stated license; nothing from it is copied into this repository.
 
 Dreamcast-Talk runs the long-running Max Pool room and the fallback server IP list.
 
