@@ -1,4 +1,8 @@
-# Max Pool meta server list.
+# Max Pool meta server list - STATIC entries.
+#
+# Game servers that point meta_server1 at this host register themselves and do
+# not belong here. Use this file for servers that cannot register: other
+# people's masters, or a room whose operator you cannot ask to reconfigure.
 #
 # One game server per line:  <host-or-ip> <port>
 # Port must match "port" in ultra_server.scs (default 35000).

@@ -17,6 +17,12 @@ welcome     = "Welcome";
 
 service_name = "ultra_server";
 
+// Self-registration. Point this at the meta server and the game server adds
+// itself to the browser at startup, with a one hour lease it refreshes.
+// Leave meta_server2 out entirely - one is enough, and the stock WON hosts
+// are long dead.
+meta_server1 = "TCP:CHANGEME:15101";
+
 // 0 = WON.net filter, 1 = Beep, 2 = Comic.
 // Any other value creates no filter object at all.
 filter_style    = 2;

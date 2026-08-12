@@ -1,10 +1,13 @@
 [Unit]
-Description=Max Pool meta server
+Description=Max Pool meta server - UDP 6003, self-registration on TCP 15101
 After=network.target
 
 [Service]
 ExecStart=/usr/local/bin/maxpool_meta_server -f /etc/maxpool/servers.conf
 Restart=on-failure
+
+# Registrations are held in memory only, so a restart empties them until each
+# game server re-registers. Entries in servers.conf are unaffected.
 DynamicUser=yes
 ReadOnlyPaths=/etc/maxpool
 AmbientCapabilities=
@@ -12,6 +15,7 @@ NoNewPrivileges=yes
 ProtectSystem=strict
 ProtectHome=yes
 PrivateTmp=yes
+RestrictAddressFamilies=AF_INET AF_INET6
 
 [Install]
 WantedBy=multi-user.target

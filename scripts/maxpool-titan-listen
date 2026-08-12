@@ -1,0 +1,239 @@
+#!/usr/bin/env python3
+"""
+maxpool-titan-listen - decode what ultra_server.exe sends to meta_server.
+
+The .scs has:
+
+    meta_server1 = "TCP:coolpool01.no-ip.info:15101";  //don't change
+    meta_server2 = "TCP:coolpool02.no-ip.info:15101";  //don't change
+
+That's WON Titan registration. Point the .scs at this box, run this, and
+restart the game server to see what it sends:
+
+    meta_server1 = "TCP:<your master>:15101";
+
+    sudo ./maxpool-titan-listen
+
+Everything received is hex-dumped and, where possible, decoded. What matters is
+the first byte of each message:
+
+    0x05  plain SmallMessage      (what Max Pool sends)
+    0x06  encrypted SmallMessage  needs the WON crypto path
+    0x1e  (30) old-style DirServer header
+    0x07  plain LargeMessage
+
+and the message type, which is 200 (AddDirectory) then 202 (AddService) for a
+normal registration. See docs/protocol.md.
+"""
+
+import argparse
+import socket
+import struct
+import sys
+import threading
+from datetime import datetime
+
+HEADER_TYPES = {
+    1: "CommonService", 2: "EncryptedService", 3: "MiniMessage",
+    4: "MiniEncrypted", 5: "SmallMessage (plain)", 6: "SmallMessage (encrypted)",
+    7: "LargeMessage (plain)", 8: "LargeMessage (encrypted)",
+    10: "FactoryServer", 20: "AuthServer", 30: "DirServer (old style)",
+    40: "ParamServer", 50: "ChatServer", 201: "Auth1Login",
+}
+
+SERVICE_TYPES = {
+    1: "CommonService", 2: "DirServerG2", 3: "FirewallDetector",
+    4: "EventServer", 5: "FactoryServer", 6: "PingServer",
+}
+
+DIR_MSGS = {
+    1: "DirG2StatusReply", 2: "DirG2SingleEntityReply", 3: "DirG2MultiEntityReply",
+    100: "DirG2GetDirectoryContents", 101: "DirG2GetDirectoryContentsReply",
+    102: "DirG2GetDirectory", 104: "DirG2GetService", 108: "DirG2FindService",
+    200: "DirG2AddDirectory", 202: "DirG2AddService", 204: "DirG2RenewDirectory",
+    205: "DirG2RenewService", 207: "DirG2NameService", 209: "DirG2RemoveService",
+    212: "DirG2ModifyService", 215: "DirG2AddServiceEx",
+}
+
+
+def ts():
+    return datetime.now().strftime("%H:%M:%S.%f")[:-3]
+
+
+def hexdump(data, indent="    "):
+    out = []
+    for i in range(0, len(data), 16):
+        chunk = data[i:i + 16]
+        hexs = " ".join("%02x" % b for b in chunk)
+        text = "".join(chr(b) if 32 <= b < 127 else "." for b in chunk)
+        out.append("%s%04x  %-47s  %s" % (indent, i, hexs, text))
+    return "\n".join(out)
+
+
+def decode(data):
+    """Best-effort read of a Titan message header."""
+    if not data:
+        return
+    notes = []
+    ht = data[0]
+    notes.append("header type 0x%02x = %s" % (ht, HEADER_TYPES.get(ht, "unknown")))
+
+    if ht in (5, 6) and len(data) >= 5:
+        svc = struct.unpack_from("<H", data, 1)[0]
+        msg = struct.unpack_from("<H", data, 3)[0]
+        notes.append("service %d = %s" % (svc, SERVICE_TYPES.get(svc, "?")))
+        if svc == 2:
+            notes.append("message %d = %s" % (msg, DIR_MSGS.get(msg, "?")))
+        else:
+            notes.append("message %d" % msg)
+        if ht == 6:
+            notes.append("ENCRYPTED - body needs the WON crypto path")
+
+    # Titan over TCP is usually length-prefixed; show how it reads both ways
+    if len(data) >= 4:
+        n2 = struct.unpack_from("<H", data, 0)[0]
+        n4 = struct.unpack_from("<I", data, 0)[0]
+        if n2 == len(data) - 2:
+            notes.append("looks like a 2-byte LE length prefix (%d)" % n2)
+        elif n4 == len(data) - 4:
+            notes.append("looks like a 4-byte LE length prefix (%d)" % n4)
+
+    for n in notes:
+        print("    %s" % n)
+
+
+def read_pw_string(data, off):
+    """PW_STRING: LE16 character count, then UTF-16LE."""
+    n = struct.unpack_from("<H", data, off)[0]
+    off += 2
+    txt = data[off:off + n * 2].decode("utf-16-le", errors="replace")
+    return txt, off + n * 2
+
+
+def decode_body(data):
+    """Decode AddDirectory / AddService bodies (plain SmallMessage only)."""
+    if len(data) < 5 or data[0] != 0x05:
+        return
+    msg = struct.unpack_from("<H", data, 3)[0]
+    if msg not in (200, 202, 204, 205, 215):
+        return
+    try:
+        # AddService: flags, then PackKey(path, name, netaddress), then
+        # display name, then lifespan. AddDirectory has no netaddress in the key.
+        off = 5
+        flags = data[off]; off += 1
+        path, off = read_pw_string(data, off)
+        name, off = read_pw_string(data, off)
+        print("      entity flags: 0x%02x" % flags)
+        print("      path:         %s" % path)
+        print("      name:         %s" % name)
+
+        if msg in (202, 205, 209, 215):
+            alen = data[off]; off += 1
+            addr = data[off:off + alen]; off += alen
+            if alen >= 6:
+                print("      netaddress:   %s:%d" % (
+                    socket.inet_ntoa(addr[2:6]),
+                    struct.unpack_from(">H", addr, 0)[0]))
+            else:
+                print("      netaddress:   %s" % addr.hex(" "))
+
+        disp, off = read_pw_string(data, off)
+        print("      display name: %s" % disp)
+        if off + 4 <= len(data):
+            print("      lifespan:     %d s" % struct.unpack_from("<I", data, off)[0])
+    except (struct.error, IndexError) as e:
+        print("      (body decode stopped: %s)" % e)
+
+
+def status_reply(status=0):
+    """SMsgDirG2StatusReply, success, with the 4-byte total-length prefix."""
+    body = bytes([0x05]) + struct.pack("<H", 2) + struct.pack("<H", 1) \
+        + struct.pack("<h", status)
+    return struct.pack("<I", len(body) + 4) + body
+
+
+def frames(buf):
+    """Split a buffer into length-prefixed frames. Returns (frames, leftover)."""
+    out = []
+    while len(buf) >= 4:
+        total = struct.unpack_from("<I", buf, 0)[0]
+        if total < 4 or total > 65535:
+            break
+        if len(buf) < total:
+            break
+        out.append(buf[4:total])
+        buf = buf[total:]
+    return out, buf
+
+
+def handle(conn, addr, keep_open, do_reply=False):
+    print("[%s] connection from %s:%d" % (ts(), addr[0], addr[1]))
+    conn.settimeout(30)
+    total = 0
+    buf = b""
+    try:
+        while True:
+            data = conn.recv(65535)
+            if not data:
+                break
+            total += len(data)
+            print("[%s] %d bytes:" % (ts(), len(data)))
+            print(hexdump(data))
+            if len(data) >= 8 and struct.unpack_from("<I", data, 0)[0] == len(data):
+                print("    4-byte LE length prefix: %d (counts itself)" % len(data))
+                decode(data[4:])
+            else:
+                decode(data)
+
+            buf += data
+            msgs, buf = frames(buf)
+            for m in msgs:
+                decode_body(m)
+                if do_reply:
+                    conn.sendall(status_reply(0))
+                    print("    -> sent DirG2StatusReply success")
+            sys.stdout.flush()
+            if not keep_open:
+                break
+    except socket.timeout:
+        print("[%s] idle timeout" % ts())
+    except OSError as e:
+        print("[%s] %s" % (ts(), e))
+    finally:
+        conn.close()
+        print("[%s] closed (%d bytes total)\n" % (ts(), total))
+
+
+def main():
+    ap = argparse.ArgumentParser()
+    ap.add_argument("-p", "--port", type=int, default=15101)
+    ap.add_argument("--reply", action="store_true",
+                    help="answer each message with DirG2StatusReply success, so "
+                         "the binary continues past registration step 1")
+    ap.add_argument("--close", action="store_true",
+                    help="close after the first message instead of holding the "
+                         "connection open (the binary may retry differently)")
+    args = ap.parse_args()
+
+    s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    s.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+    s.bind(("0.0.0.0", args.port))
+    s.listen(5)
+    print("listening on TCP %d - restart the game server now (ctrl-c to stop)\n"
+          % args.port)
+
+    try:
+        while True:
+            conn, addr = s.accept()
+            threading.Thread(target=handle,
+                             args=(conn, addr, not args.close, args.reply),
+                             daemon=True).start()
+    except KeyboardInterrupt:
+        print()
+    finally:
+        s.close()
+
+
+if __name__ == "__main__":
+    main()

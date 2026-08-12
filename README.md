@@ -6,12 +6,16 @@ Tools and notes for running your own Maximum Pool game server and meta server.
 
 ## Credit
 
-The meta server is Shuouma's. He reverse-engineered the protocol and wrote the original. This
-version swaps the hardcoded hostname for a config file. Original on the Server Software page at
-<https://dreamcastlive.net/>; his copyright header and license ship as-is.
+The meta server here is derived from Shuouma's, on the Server Software page at
+<https://dreamcastlive.net/>. His copyright header and license ship as-is.
 
-`ultra_server.exe` is Sierra's, so it isn't included here. Grab it from the Dreamcast Live or
-Dreamcast-Talk server software pages.
+Packet formats in `docs/protocol.md` were checked against the archived WON/Titan SDK sources at
+<https://github.com/madebr/WON> (forked from kin37ik/WON).
+
+Dreamcast-Talk runs the long-running Max Pool room and the fallback server IP list.
+
+`ultra_server.exe` is Sierra's and isn't included. It's on the Dreamcast Live and Dreamcast-Talk
+server software pages.
 
 ---
 
@@ -23,6 +27,7 @@ server** directly.
 | Binary | `maxpool_meta_server` (Linux, source included) | `ultra_server.exe` (Windows, runs under Wine) |
 | Port | UDP 6003 | UDP 35000 |
 | Job | Answers "where are the servers" | The gathering room / game itself |
+| Also | Accepts self-registration on TCP 15101 | Registers itself at startup |
 
 Clients reach the meta server by resolving `coolpool.east.won.net` and `coolpool.west.won.net`.
 
@@ -32,9 +37,8 @@ Clients reach the meta server by resolving `coolpool.east.won.net` and `coolpool
 
 ### game_guid
 
-Has to be this exact value. It's what tells Maximum Pool apart from Cool Pool, and the client
-sends it in every probe. Wrong GUID and the server ignores everything it receives. Blank and it
-won't start.
+This exact value. It distinguishes Maximum Pool from Cool Pool and the client sends it in every
+probe. Wrong and the server ignores everything it receives; blank and it won't start.
 
 ```
 game_guid = "E6666EA0-DBB2-11D2-A771-006097C3E986";
@@ -61,8 +65,15 @@ max_players = 32;
 max_games   = 8;
 ```
 
-Delete any `meta_server1` / `meta_server2` lines. They point at the WON Titan registry, dead since
-2007, and only produce `Could not find host` noise.
+Point `meta_server1` at your meta server and delete `meta_server2`:
+
+```
+meta_server1 = "TCP:<meta server IP>:15101";
+```
+
+The game server registers itself at startup, so it appears without editing `servers.conf`. The
+stock values point at the WON hosts, dead since 2007; `Could not find host` in the log means you
+aren't registered.
 
 The `.scs` is a script that runs at startup, not an INI file. A parse error leaves everything below
 it undefined. Watch for `Input was processed up to line N.`
@@ -112,8 +123,10 @@ Max 2 sessions, 60 min idle timeout, 3 failed logins locks out new connections f
 
 ## 2. Meta server
 
-Shuouma's original hardcodes one hostname in `create_server_list()`. The version here reads a
-list from a file instead, re-read on every request. See **Credit** above.
+The original hardcodes one hostname in `create_server_list()`. This version reads a list from a
+file, re-read on every request, accepts self-registration on TCP 15101, and fixes a framing bug
+that capped the browser at one room regardless of how many servers were listed
+(`docs/protocol.md`).
 
 ```
 make
@@ -127,22 +140,33 @@ cp config/servers.conf.example servers.conf   # then edit it
 pool.example.com 35000
 ```
 
-Flags: `-p` listen port (default 6003), `-f` config path, `-v` also log packets failing the magic
-check.
+Flags: `-p` listen port (default 6003), `-f` config path, `-r` registration port (default 15101,
+`-r 0` disables), `-v` also log packets that fail the magic check.
+
+Single process, no threads, no dependencies beyond libc.
+
+Registered servers are listed first, then `servers.conf`, duplicates skipped. Registrations expire
+after the lifespan the game server asks for, an hour in practice, so a room that goes away stops
+being advertised. They are held in memory, so restarting the meta server clears them until each
+game server re-registers; `servers.conf` is for entries that must always be listed.
 
 Check it without a client:
 
 ```bash
 python3 -c "
-import socket,binascii
+import socket,struct
+req=bytes([5,2,0,0x66,0])+struct.pack('<I',0x0400000A)+bytes([0,0])+struct.pack('<H',9)+'/CoolPool'.encode('utf-16-le')
 s=socket.socket(socket.AF_INET,socket.SOCK_DGRAM);s.settimeout(3)
-s.sendto(bytes([5,2,0,0x66,0,0x0a,0,0,4]),('127.0.0.1',6003))
-print(binascii.hexlify(s.recvfrom(1024)[0],' ').decode())"
+s.sendto(req,('127.0.0.1',6003));d,_=s.recvfrom(4096)
+n=struct.unpack_from('<H',d,12)[0];o=14
+for _ in range(n):
+    l=d[o] or 6;o+=1
+    print(socket.inet_ntoa(d[o+2:o+6]),struct.unpack_from('>H',d,o)[0]);o+=l"
 ```
 
-One entry = 21 bytes: 15-byte header, then big-endian port + IPv4. The last 6 bytes are the address
-you're handing out. Reading them catches a stale `servers.conf`, which otherwise fails silently:
-the client probes a dead address, the list comes up empty, and nothing logs an error.
+Same `DirG2GetDirectory` request a Dreamcast sends. One entry is 21 bytes: a 14-byte header, then a
+length byte, big-endian port and IPv4 per server. A stale `servers.conf` fails silently otherwise,
+since the client probes a dead address and shows an empty list with nothing logged.
 
 ---
 
@@ -158,14 +182,13 @@ the client resolves the name and then never sends anything to port 6003, with no
 anywhere to tell you why. The original servers answered with `CNAME coolpool.east.` + A, and
 matching that works.
 
-Untested which of the two the client actually cares about, the record shape or the TTL. Setting
-both works.
+Untested which the client depends on, the record shape or the TTL. Setting both works.
 
 `auriga.segasoft.com` gets queried too. It returns NXDOMAIN and the client carries on, so leave it
 alone.
 
-Best case these records live in the community DNS that DreamPi already points at, so players don't
-have to configure anything. Until then, run your own resolver or override locally.
+These records belong in the community DNS that DreamPi already points at, so players need no
+client-side setup at all. Until then, run your own resolver or override on the Pi.
 
 ### dnsmasq example
 
@@ -195,7 +218,7 @@ Working sequence:
 ```
 query[A] coolpool.east.won.net    -> meta server IP
 UDP  31 bytes  client -> meta:6003
-UDP  21 bytes  meta:6003 -> client
+UDP  21 bytes  meta:6003 -> client        (28 for two rooms, +7 each after)
 UDP  29 bytes  client -> game:35000     (plus broadcasts to 255.255.255.255:35000)
 UDP 124 bytes  game:35000 -> client
 ```
@@ -206,7 +229,8 @@ UDP 124 bytes  game:35000 -> client
 | Resolves, no 6003 packet | Bare A record, needs CNAME + non-zero TTL |
 | 6003 request, no reply | Meta server not running, or port taken |
 | Probes hit 35000, no reply | Wrong or missing `game_guid` |
-| Client probes the wrong IP | Stale `servers.conf` |
+| Client probes the wrong IP | Stale `servers.conf`, or a NAT host announced a private address |
+| Only one room ever listed | Meta server predates the framing fix - see `docs/protocol.md` |
 
 The 29-byte probe carries the game GUID in its last 16 bytes, little-endian on the first three
 fields. If another title ever needs a GUID nobody has written down, capture a probe and read it
@@ -225,11 +249,15 @@ README.md                             this guide
 LICENSE                               this repository's license
 LICENSE.upstream                      license as shipped with Shuouma's release
 Makefile                              build + install
-src/maxpool_meta_server.c             meta server (modified from Shuouma's)
-config/servers.conf.example           game servers to advertise
+src/maxpool_meta_server.c             meta server
+config/servers.conf.example           static game servers to advertise
 config/ultra_server.scs.example       minimum game server settings
 config/dnsmasq-maxpool.conf.example   DNS records clients need
-systemd/maxpool-meta-server.service   unit file
+scripts/maxpool-titan-listen          decode what a game server sends to 15101
+systemd/maxpool-meta-server.service   meta server unit
+systemd/maxpool-game.service.example  game server under Wine
+docs/protocol.md                      wire formats, and the one-server bug
+docs/hosting-a-room.md                short guide for people running a room
 docs/ultra_server_reference.md        reverse-engineered notes on ultra_server.exe
 ```
 

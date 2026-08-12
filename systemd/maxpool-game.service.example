@@ -1,0 +1,42 @@
+# Game server (ultra_server.exe under Wine). Copy to
+# /etc/systemd/system/maxpool-game.service and replace every CHANGEME.
+#
+# The Wine prefix must be 32-bit and must be created by this same user:
+#   sudo -u CHANGEME WINEPREFIX=/home/CHANGEME/maxpool/wine WINEARCH=win32 \
+#        wine wineboot -u
+
+[Unit]
+Description=Max Pool game server (ultra_server.exe under Wine) - UDP 35000
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=CHANGEME
+Group=CHANGEME
+WorkingDirectory=/home/CHANGEME/maxpool/game
+
+Environment=WINEPREFIX=/home/CHANGEME/maxpool/wine
+Environment=WINEARCH=win32
+Environment=WINEDEBUG=-all
+# stops Wine popping up mono/gecko installer dialogs on a headless box
+Environment=WINEDLLOVERRIDES=mscoree=,mshtml=
+
+ExecStart=/usr/bin/wine ultra_server.exe -run
+
+# wineserver outlives the exe; kill it so a restart gets a clean prefix
+ExecStopPost=-/usr/bin/wineserver -k
+
+Restart=always
+RestartSec=10
+KillMode=mixed
+TimeoutStopSec=20
+
+# Wine dislikes heavy sandboxing - no PrivateTmp, no MemoryDenyWriteExecute,
+# no RestrictAddressFamilies here
+NoNewPrivileges=true
+ProtectSystem=full
+ReadWritePaths=/home/CHANGEME/maxpool
+
+[Install]
+WantedBy=multi-user.target
