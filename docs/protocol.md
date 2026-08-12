@@ -119,8 +119,12 @@ The announced address comes from the `.scs`, not the socket, so a host behind
 NAT announces an unreachable private address. Prefer the connection's peer
 address, falling back to the announced one.
 
-The binary does send `DirG2RenewService` (205) before the lease runs out,
-preceded by another `DirG2AddDirectory`. Renew has a different body from
+The binary sends `DirG2RenewService` (205) every 25 minutes, preceded by another
+`DirG2AddDirectory`, regardless of the lease length it asked for. It sends
+nothing on shutdown, so a stopped room stays in the meta server's list until its
+lease expires. That doesn't reach players: the console probes each entry on
+35000 and shows only the ones that answer, so a stale entry is invisible in the
+browser. Renew has a different body from
 AddService: `SMsgDirG2RenewEntity::Pack` writes the key and lifespan only, with
 no entity flags byte and no display name.
 
@@ -142,7 +146,7 @@ no entity flags byte and no display name.
 | 200 | DirG2AddDirectory | game server -> server |
 | 202 | DirG2AddService | game server -> server |
 | 205 | DirG2RenewService | game server -> server |
-| 209 | DirG2RemoveService | expected, unconfirmed |
+| 209 | DirG2RemoveService | never seen; nothing is sent on shutdown |
 
 ## 3. The game probe (UDP 35000)
 

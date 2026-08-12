@@ -83,7 +83,9 @@ You should appear within seconds of starting. If not, check the meta server is
 reachable: `nc -vz <master> 15101`.
 
 Registrations carry a one hour lease, so stopping your server drops it from the
-list on its own. A running server renews the lease before it expires.
+list within the hour, and disappears from the in-game browser immediately: the
+console only shows rooms that answer. A running server renews its lease every
+25 minutes.
 
 ## 6. Players
 
