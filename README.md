@@ -149,10 +149,9 @@ dependencies beyond libc.
 
 Registered servers are listed first, then `servers.conf`, duplicates skipped. Registrations expire
 after the lifespan the game server asks for, an hour in practice, so a room that goes away stops
-being advertised. Whether `ultra_server.exe` renews before that hour is unconfirmed; if it doesn't,
-a long-running room drops off the list until it restarts. Registrations are held in memory, so
-restarting the meta server also clears them. `servers.conf` is for entries that must always be
-listed.
+being advertised. `ultra_server.exe` renews its lease before it expires, so a room stays listed for
+as long as it's up. Registrations are held in memory, so restarting the meta server clears them
+until each game server renews. `servers.conf` is for entries that must always be listed.
 
 Check it without a client:
 

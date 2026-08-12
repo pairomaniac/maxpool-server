@@ -3,8 +3,8 @@
  *
  * UDP 6003  - answers the Dreamcast's DirG2GetDirectory query with the server
  *             list, built from self-registrations plus a config file.
- * TCP 15101 - accepts DirG2AddService registrations from game servers whose
- *             .scs points meta_server1 here.
+ * TCP 15101 - accepts DirG2AddService and DirG2RenewService from game servers
+ *             whose .scs points meta_server1 here.
  *
  * Wire formats are in docs/protocol.md. The reply header is 14 bytes and each
  * entity is 7 (length byte, big-endian port, IPv4). Treating the header as 15
@@ -270,13 +270,16 @@ static ssize_t skip_pw_string(const unsigned char *b, size_t len, size_t off)
     return off > len ? -1 : (ssize_t)off;
 }
 
-/* AddService body: entity flags, path, name, netaddress, display name,
- * lifespan. The netaddress is part of the entity key, hence its position. */
-static int parse_add_service(const unsigned char *b, size_t len,
+/* AddService:   header, entity flags, path, name, netaddress, display name,
+ *               lifespan.
+ * RenewService: header, path, name, netaddress, lifespan. No flags byte and no
+ *               display name - SMsgDirG2RenewEntity::Pack skips both.
+ * The netaddress is part of the entity key in each, hence its position. */
+static int parse_service_msg(const unsigned char *b, size_t len, int is_add,
                              struct in_addr *ip, unsigned short *port,
                              unsigned long *lifespan)
 {
-    ssize_t off = 6;                     /* header + entity flags */
+    ssize_t off = is_add ? 6 : 5;        /* header, plus flags byte on add */
     unsigned char alen;
 
     if (len < 8)
@@ -295,7 +298,7 @@ static int parse_add_service(const unsigned char *b, size_t len,
     memcpy(&ip->s_addr, b + off + 2, 4);
     off += alen;
 
-    if ((off = skip_pw_string(b, len, off)) < 0)   /* display name */
+    if (is_add && (off = skip_pw_string(b, len, off)) < 0)   /* display name */
         return -1;
     if ((size_t)off + 4 > len)
         return -1;
@@ -342,13 +345,15 @@ static void handle_registration(int listen_fd)
         if (buf[4] == 0x05 && buf[5] == 0x02 && buf[6] == 0x00) {
             unsigned short msgtype = (unsigned short)(buf[7] | (buf[8] << 8));
 
-            if (msgtype == 202) {         /* DirG2AddService */
+            /* 202 registers, 205 renews the lease on an existing entry.
+             * Both carry the address, so both are handled the same way. */
+            if (msgtype == 202 || msgtype == 205) {
                 struct in_addr ip;
                 unsigned short port;
                 unsigned long lifespan;
 
-                if (parse_add_service(buf + 4, total - 4, &ip, &port,
-                                      &lifespan) == 0) {
+                if (parse_service_msg(buf + 4, total - 4, msgtype == 202,
+                                      &ip, &port, &lifespan) == 0) {
                     /* a host behind NAT announces an address nobody can reach;
                      * the one it connected from works */
                     if (ip.s_addr != peer.sin_addr.s_addr) {
@@ -358,8 +363,8 @@ static void handle_registration(int listen_fd)
                     }
                     reg_add(ip, port, lifespan);
                 } else {
-                    logmsg("malformed AddService from %s, ignored",
-                           inet_ntoa(peer.sin_addr));
+                    logmsg("malformed msg %u from %s, ignored",
+                           msgtype, inet_ntoa(peer.sin_addr));
                 }
             } else if (verbose) {
                 logmsg("registration msg %u from %s (no action)",

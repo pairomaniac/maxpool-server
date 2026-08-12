@@ -83,8 +83,7 @@ You should appear within seconds of starting. If not, check the meta server is
 reachable: `nc -vz <master> 15101`.
 
 Registrations carry a one hour lease, so stopping your server drops it from the
-list on its own. Whether the binary renews the lease is unconfirmed; if your
-room vanishes after an hour of uptime, restart it and say so.
+list on its own. A running server renews the lease before it expires.
 
 ## 6. Players
 
