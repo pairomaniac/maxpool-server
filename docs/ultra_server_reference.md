@@ -93,7 +93,7 @@ A blank `game_guid = "";` hits the second path: the server prints the guid error
 
 ### `meta_serverN` format
 
-`TCP:host:port`. `TCP:` and `UDP:` prefixes both exist in the binary. Registration is the old WON Titan protocol: connect, push an update, log `Titan update -- successful: %s.` On failure you get `Failed to connect to: %s (err #%d)` or `Could not find host: %s` and the server carries on. Resolved addresses are cached (`using cached ip for %s = %s`). On shutdown it prints `Waiting to unregister with Titan...`.
+`TCP:host:port`. `TCP:` and `UDP:` prefixes both exist in the binary. Registration is the WON Titan protocol, documented in `docs/protocol.md`: connect, push an update, log `Titan update -- successful: %s.` On failure you get `Failed to connect to: %s (err #%d)` or `Could not find host: %s` and the server carries on. Resolved addresses are cached (`using cached ip for %s = %s`). On shutdown it prints `Waiting to unregister with Titan...`.
 
 None of this is required for clients to connect. It is purely the old directory listing.
 
@@ -210,4 +210,5 @@ Once logged in you get the same interpreter as the console, so `dir()`, `transSt
 4. `cleanwords.lst` / `dirtywords.lst` must exist unless you set `filter_style` to something outside 0–2.
 5. Watch the banner: `Server "…" started at …` then `Using port … and guid "…"` then `Max Players: %d -- Max Games: %d` then `Transport on at address %s`. If you don't reach the transport line, the failure is in config, not networking.
 6. Enable telnet and run `dir()` while a Dreamcast is trying to connect.
-7. `meta_serverN` failures are cosmetic. Ignore them.
+7. `meta_serverN` failures mean the server isn't registered with a meta server. Harmless if you
+   list it by hand instead; see `docs/protocol.md` for the registration exchange.

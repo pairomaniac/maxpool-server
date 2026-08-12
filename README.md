@@ -60,6 +60,7 @@ server_name = "My Server";
 welcome     = "Welcome";
 
 service_name = "ultra_server";
+meta_server1 = "TCP:<meta server IP>:15101";
 
 filter_style    = 2;
 clean_word_list = "cleanwords.lst";
@@ -69,15 +70,13 @@ max_players = 32;
 max_games   = 8;
 ```
 
-Point `meta_server1` at your meta server and delete `meta_server2`:
+`meta_server1` points at the meta server, and the game server registers itself there at startup, so
+it appears without editing `servers.conf`. Delete `meta_server2`. The stock values are WON hosts
+that no longer resolve; `Could not find host` in the log means you aren't registered.
 
-```
-meta_server1 = "TCP:<meta server IP>:15101";
-```
-
-The game server registers itself at startup, so it appears without editing `servers.conf`. The
-stock values point at the WON hosts, dead since 2007; `Could not find host` in the log means you
-aren't registered.
+`titan_root` and `titan_directory` set the path it registers under, `/root/directory`. Consoles
+query `/CoolPool`, so a different root puts the room somewhere nothing looks. This meta server
+ignores the path and lists any registration it receives.
 
 The `.scs` is a script that runs at startup, not an INI file. A parse error leaves everything below
 it undefined. Watch for `Input was processed up to line N.`
@@ -101,8 +100,8 @@ Game Server Version: 102
 Max Players: 32 -- Max Games: 8
 ```
 
-If you don't see `Creating transport ultra_server failed`, the socket bound. `ss -lunp | grep 35000`
-confirms it.
+`Creating transport ultra_server failed` means the socket didn't bind. `ss -lunp | grep 35000`
+confirms it did.
 
 ### Telnet console
 
@@ -145,14 +144,15 @@ pool.example.com 35000
 ```
 
 Flags: `-p` listen port (default 6003), `-f` config path, `-r` registration port (default 15101,
-`-r 0` disables), `-v` also log packets that fail the magic check.
-
-Single process, no threads, no dependencies beyond libc.
+`-r 0` disables), `-v` also log packets that fail the magic check. Single process, no threads, no
+dependencies beyond libc.
 
 Registered servers are listed first, then `servers.conf`, duplicates skipped. Registrations expire
 after the lifespan the game server asks for, an hour in practice, so a room that goes away stops
-being advertised. They are held in memory, so restarting the meta server clears them until each
-game server re-registers; `servers.conf` is for entries that must always be listed.
+being advertised. Whether `ultra_server.exe` renews before that hour is unconfirmed; if it doesn't,
+a long-running room drops off the list until it restarts. Registrations are held in memory, so
+restarting the meta server also clears them. `servers.conf` is for entries that must always be
+listed.
 
 Check it without a client:
 
@@ -274,3 +274,5 @@ sudo cp config/servers.conf.example /etc/maxpool/servers.conf
 sudo $EDITOR /etc/maxpool/servers.conf
 sudo systemctl enable --now maxpool-meta-server
 ```
+
+Open UDP 6003 and TCP 15101 on the meta server host, and UDP 35000 wherever the game server runs.

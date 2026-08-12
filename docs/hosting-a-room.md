@@ -43,7 +43,9 @@ port         = 35000;
 meta_server1 = "TCP:<master>:15101";
 ```
 
-The GUID has to be exact or the server won't start. Delete `meta_server2`.
+The GUID has to be exact or the server won't start. Delete `meta_server2`. If
+you set `titan_root`, it must be `CoolPool`: that's the directory consoles
+query.
 
 Comments are `//`, but a line starting with `//` that contains a second `//`
 is a syntax error, so delete lines rather than commenting them out. Line
@@ -81,7 +83,8 @@ You should appear within seconds of starting. If not, check the meta server is
 reachable: `nc -vz <master> 15101`.
 
 Registrations carry a one hour lease, so stopping your server drops it from the
-list on its own.
+list on its own. Whether the binary renews the lease is unconfirmed; if your
+room vanishes after an hour of uptime, restart it and say so.
 
 ## 6. Players
 
