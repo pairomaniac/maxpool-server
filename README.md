@@ -151,8 +151,8 @@ Registered servers are listed first, then `servers.conf`, duplicates skipped. Re
 after the lifespan the game server asks for, an hour in practice, so a room that goes away stops
 being advertised. `ultra_server.exe` renews every 25 minutes while it runs and sends nothing when it
 stops, so a stopped room sits in the list until its lease expires - harmless, since the console only
-displays entries that answer a probe on 35000. Registrations are held in memory, so restarting the meta server clears them
-until each game server renews. `servers.conf` is for entries that must always be listed.
+displays entries that answer a probe on 35000. Registrations are held in memory, so restarting the
+meta server clears them until each game server renews. `servers.conf` is for entries that must always be listed.
 
 Check it without a client:
 

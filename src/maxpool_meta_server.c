@@ -1,6 +1,14 @@
 /*
  * Max Pool meta (master) server.
  *
+ * Copyright (C) 2017 Shuouma <dreamcast-talk.com>
+ * Copyright (C) 2026 pairo <pairo@lanttumaa.fi>
+ *
+ * https://github.com/pairomaniac/maxpool-server
+ *
+ * Derived from Shuouma's Max Pool meta server, https://dreamcastlive.net/
+ * (Server Software page). License in LICENSE.upstream.
+ *
  * UDP 6003  - answers the Dreamcast's DirG2GetDirectory query with the server
  *             list, built from self-registrations plus a config file.
  * TCP 15101 - accepts DirG2AddService and DirG2RenewService from game servers
@@ -9,10 +17,6 @@
  * Wire formats are in docs/protocol.md. The reply header is 14 bytes and each
  * entity is 7 (length byte, big-endian port, IPv4). Treating the header as 15
  * and the entities as 6 works for one server and truncates the list for more.
- *
- * Derived from the Max Pool meta server by Shuouma <dreamcast-talk.com>,
- * copyright 2017, https://dreamcastlive.net/ (Server Software page).
- * License in LICENSE.upstream.
  *
  *   gcc -Wall -O2 maxpool_meta_server.c -o maxpool_meta_server
  *   ./maxpool_meta_server -f servers.conf -v
@@ -87,7 +91,8 @@ static void logmsg(const char *fmt, ...)
  * registrations first and duplicate addresses skipped.
  */
 
-static void reg_add(struct in_addr ip, unsigned short port, unsigned long lifespan)
+static void reg_add(struct in_addr ip, unsigned short port,
+                    unsigned long lifespan, unsigned short msgtype)
 {
     time_t expires;
     int i;
@@ -99,7 +104,10 @@ static void reg_add(struct in_addr ip, unsigned short port, unsigned long lifesp
     for (i = 0; i < reg_count; i++)
         if (regs[i].ip.s_addr == ip.s_addr && regs[i].port == port) {
             regs[i].expires = expires;
-            logmsg("refreshed %s:%u for %lus", inet_ntoa(ip), port, lifespan);
+            /* msgtype distinguishes a 25-minute keepalive (205) from a game
+             * server that restarted and registered again (202) */
+            logmsg("refreshed %s:%u for %lus (msg %u)",
+                   inet_ntoa(ip), port, lifespan, msgtype);
             return;
         }
 
@@ -112,7 +120,8 @@ static void reg_add(struct in_addr ip, unsigned short port, unsigned long lifesp
     regs[reg_count].port = port;
     regs[reg_count].expires = expires;
     reg_count++;
-    logmsg("registered %s:%u for %lus", inet_ntoa(ip), port, lifespan);
+    logmsg("registered %s:%u for %lus (msg %u)",
+           inet_ntoa(ip), port, lifespan, msgtype);
 }
 
 static void reg_expire(void)
@@ -361,7 +370,7 @@ static void handle_registration(int listen_fd)
                                inet_ntoa(ip));
                         ip = peer.sin_addr;
                     }
-                    reg_add(ip, port, lifespan);
+                    reg_add(ip, port, lifespan, msgtype);
                 } else {
                     logmsg("malformed msg %u from %s, ignored",
                            msgtype, inet_ntoa(peer.sin_addr));
