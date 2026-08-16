@@ -79,7 +79,10 @@ length is double the count.
 The sequence, each message on its own connection, closed after the reply:
 
 1. An empty connection - a reachability probe.
-2. `DirG2AddDirectory` (200), creating `/CoolPool`:
+2. `DirG2AddDirectory` (200), creating the directory named by `titan_root` in
+   the .scs. Both `titan_root` and `titan_directory` must be set or the server
+   skips registration entirely; the values themselves are arbitrary, since the
+   path is only used to place the entry:
 
 ```
 05 02 00 c8 00     header, service 2, message 200

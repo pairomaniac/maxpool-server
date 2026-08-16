@@ -20,12 +20,13 @@ service_name = "ultra_server";
 // Self-registration. Point this at the meta server and the game server adds
 // itself to the browser at startup, asking for a one hour lease. One entry is
 // enough; the stock WON hosts no longer resolve.
-meta_server1 = "TCP:CHANGEME:15101";
+meta_server1 = "TCP:CHANGEME:15101";   // hostname or IP
 
-// Directory it registers under, as /titan_root/titan_directory. Consoles query
-// /CoolPool, so leave titan_root alone unless you know why you're changing it.
-// titan_root      = "CoolPool";
-// titan_directory = "My Room";
+// Directory it registers under, as /titan_root/titan_directory. Both must be
+// set or the server won't register at all. The values are arbitrary, but
+// consoles query /CoolPool, so there's no reason to change titan_root.
+titan_root      = "CoolPool";
+titan_directory = "My Room";
 
 // 0 = WON.net filter, 1 = Beep, 2 = Comic.
 // Any other value creates no filter object at all.

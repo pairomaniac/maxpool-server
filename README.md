@@ -39,6 +39,10 @@ Clients reach the meta server by resolving `coolpool.east.won.net` and `coolpool
 
 ## 1. Game server
 
+Running a room and not the meta server? **[docs/hosting-a-room.md](docs/hosting-a-room.md)** is a
+standalone guide covering Windows and Wine, with a minimum config to copy. The rest of this section
+is the reference.
+
 ### game_guid
 
 This exact value. It distinguishes Maximum Pool from Cool Pool and the client sends it in every
@@ -152,7 +156,8 @@ after the lifespan the game server asks for, an hour in practice, so a room that
 being advertised. `ultra_server.exe` renews every 25 minutes while it runs and sends nothing when it
 stops, so a stopped room sits in the list until its lease expires - harmless, since the console only
 displays entries that answer a probe on 35000. Registrations are held in memory, so restarting the
-meta server clears them until each game server renews. `servers.conf` is for entries that must always be listed.
+meta server clears them until each game server renews. `servers.conf` is for entries that must
+always be listed.
 
 Check it without a client:
 
@@ -261,6 +266,7 @@ scripts/maxpool-titan-listen          decode what a game server sends to 15101
 systemd/maxpool-meta-server.service   meta server unit
 systemd/maxpool-game.service.example  game server under Wine
 docs/protocol.md                      wire formats, and the one-server bug
+docs/scs-notes.md                     ultra_server.scs settings and parser quirks
 docs/hosting-a-room.md                short guide for people running a room
 docs/ultra_server_reference.md        reverse-engineered notes on ultra_server.exe
 ```

@@ -1,94 +1,137 @@
 # Hosting a Maximum Pool room
 
-Run `ultra_server.exe` under Wine, point it at a meta server, and it registers
-itself. Players see your room in the in-game list.
+Point `ultra_server.exe` at a meta server and your room shows up in the in-game
+browser. Runs natively on Windows, or under Wine elsewhere.
 
-Ask whoever runs the meta server for its address. Below it's `<master>`.
+You need the server files (`ultra_server.exe`, `ultra_server.scs`,
+`cleanwords.lst`, `dirtywords.lst`) from the Dreamcast Live or Dreamcast-Talk
+server software pages.
 
-## 1. Ports
+Meta server used below: `pool.segaonline.net`.
 
-| Port | Proto | Direction | For |
-|---|---|---|---|
-| 35000 | UDP | inbound | the game itself |
-| 15101 | TCP | outbound | registering |
+## 1. ultra_server.scs
 
-Open them in the OS firewall and in any provider firewall.
+Replace the stock file with this, changing `server_name`:
 
-```bash
-sudo ufw allow proto udp from any to any port 35000
+```
+protocol   = "UDP";
+port       = 35000;
+game_guid  = "E6666EA0-DBB2-11D2-A771-006097C3E986";
+
+server_name  = "My Pool Room";
+welcome      = "Welcome!";
+service_name = "ultra_server";
+
+meta_server1 = "TCP:pool.segaonline.net:15101";
+
+titan_root      = "CoolPool";
+titan_directory = "Cool Pool 1";
+
+filter_style    = 2;
+clean_word_list = "cleanwords.lst";
+dirty_word_list = "dirtywords.lst";
+
+max_players = 32;
+max_games   = 8;
+
+traceon ();
+print ("Server \"" + server_name + "\" started on port " + istr(port) + ".\n");
 ```
 
-Behind NAT, forward UDP 35000 to the machine. The meta server registers the
-address your connection comes from, so a static IP isn't needed.
+Save it with CRLF line endings. If you get `Parse error line N`, that's usually
+LF endings or an edited comment — see [scs-notes.md](scs-notes.md).
 
-## 2. Wine
+## 2. Windows
+
+Open the port, from an admin prompt:
+
+```
+netsh advfirewall firewall add rule name="Max Pool" dir=in action=allow protocol=UDP localport=35000
+```
+
+Run it from the folder with the files:
+
+```
+ultra_server.exe -run
+```
+
+Nothing to install. To keep it running across reboots, put a shortcut in
+`shell:startup` or use [NSSM](https://nssm.cc/):
+
+```
+nssm install MaxPool C:\maxpool\ultra_server.exe -run
+nssm set MaxPool AppDirectory C:\maxpool
+nssm start MaxPool
+```
+
+## 3. Linux and macOS
+
+Wine needs 32-bit support.
 
 ```bash
-sudo dpkg --add-architecture i386        # Debian/Ubuntu
-sudo apt update
+# Debian / Ubuntu
+sudo dpkg --add-architecture i386 && sudo apt update
 sudo apt install --install-recommends wine wine32:i386
 
+# Fedora
+sudo dnf install wine wine-core.i686
+
+# Arch: enable multilib, then
+sudo pacman -S wine
+
+# macOS
+brew install --cask --no-quarantine wine-stable
+```
+
+Create a 32-bit prefix as the user that will run the server:
+
+```bash
 export WINEPREFIX=$HOME/maxpool/wine WINEARCH=win32
 wine wineboot -u
 ```
 
-The prefix must be 32-bit. `wineboot` isn't a standalone command; run it
-through `wine`.
-
-## 3. ultra_server.scs
-
-```
-game_guid    = "E6666EA0-DBB2-11D2-A771-006097C3E986";
-port         = 35000;
-meta_server1 = "TCP:<master>:15101";
-```
-
-The GUID has to be exact or the server won't start. Delete `meta_server2`. If
-you set `titan_root`, it must be `CoolPool`: that's the directory consoles
-query.
-
-Comments are `//`, but a line starting with `//` that contains a second `//`
-is a syntax error, so delete lines rather than commenting them out. Line
-endings must stay CRLF. On `Parse error line N`, check that line with `cat -A`.
-
-## 4. Run it
+Then:
 
 ```bash
+sudo ufw allow proto udp from any to any port 35000
 cd ~/maxpool/game
 wine ultra_server.exe -run
 ```
 
-`Could not find host: coolpool01.no-ip.info` means `meta_server1` still points
-at the dead WON hosts, so you aren't registered.
+To run it as a service, use `systemd/maxpool-game.service.example` from this
+repository.
 
-For a service, use `systemd/maxpool-game.service.example`. `ExecStopPost` is
-the part not to drop: wineserver outlives the exe, and without killing it a
-restart can come up half-broken.
+## 4. Check it worked
 
-## 5. Check you're listed
+Behind NAT, forward UDP 35000 to the machine first. You don't need a static IP.
+
+Your room should appear in the in-game browser within seconds of starting. To
+check without a Dreamcast, ask the meta server what it's listing:
 
 ```bash
 python3 -c "
 import socket,struct
 req=bytes([5,2,0,0x66,0])+struct.pack('<I',0x0400000A)+bytes([0,0])+struct.pack('<H',9)+'/CoolPool'.encode('utf-16-le')
 s=socket.socket(socket.AF_INET,socket.SOCK_DGRAM);s.settimeout(3)
-s.sendto(req,('MASTER_IP',6003));d,_=s.recvfrom(4096)
+s.sendto(req,('pool.segaonline.net',6003));d,_=s.recvfrom(4096)
 n=struct.unpack_from('<H',d,12)[0];o=14
 for _ in range(n):
     l=d[o] or 6;o+=1
     print(socket.inet_ntoa(d[o+2:o+6]),struct.unpack_from('>H',d,o)[0]);o+=l"
 ```
 
-You should appear within seconds of starting. If not, check the meta server is
-reachable: `nc -vz <master> 15101`.
+If your address isn't there:
 
-Registrations carry a one hour lease, so stopping your server drops it from the
-list within the hour, and disappears from the in-game browser immediately: the
-console only shows rooms that answer. A running server renews its lease every
-25 minutes.
+| Symptom | Cause |
+|---|---|
+| `Could not find host: coolpool01...` | `meta_server1` still points at the old WON hosts |
+| Starts, never appears | `titan_root` or `titan_directory` missing — both are required |
+| `Parse error line N` | see [scs-notes.md](scs-notes.md) |
+| Nothing obvious | meta server unreachable on 15101: `nc -vz pool.segaonline.net 15101` |
 
-## 6. Players
+Stopping your server removes it from the browser immediately.
+
+## 5. Players
 
 Players need `coolpool.east.won.net` and `coolpool.west.won.net` resolving to
-the meta server. See the README for the records; on a DreamPi they go in the
-Pi's dnsmasq config.
+the meta server — see the DNS section of the README.
