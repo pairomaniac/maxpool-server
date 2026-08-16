@@ -7,7 +7,7 @@ You need the server files (`ultra_server.exe`, `ultra_server.scs`,
 `cleanwords.lst`, `dirtywords.lst`) from the Dreamcast Live or Dreamcast-Talk
 server software pages.
 
-Meta server used below: `pool.segaonline.net`.
+Meta server used below: `shumania.ddns.net`.
 
 ## 1. ultra_server.scs
 
@@ -22,7 +22,7 @@ server_name  = "My Pool Room";
 welcome      = "Welcome!";
 service_name = "ultra_server";
 
-meta_server1 = "TCP:pool.segaonline.net:15101";
+meta_server1 = "TCP:shumania.ddns.net:15101";
 
 titan_root      = "CoolPool";
 titan_directory = "Cool Pool 1";
@@ -119,7 +119,7 @@ python3 -c "
 import socket,struct
 req=bytes([5,2,0,0x66,0])+struct.pack('<I',0x0400000A)+bytes([0,0])+struct.pack('<H',9)+'/CoolPool'.encode('utf-16-le')
 s=socket.socket(socket.AF_INET,socket.SOCK_DGRAM);s.settimeout(3)
-s.sendto(req,('pool.segaonline.net',6003));d,_=s.recvfrom(4096)
+s.sendto(req,('shumania.ddns.net',6003));d,_=s.recvfrom(4096)
 n=struct.unpack_from('<H',d,12)[0];o=14
 for _ in range(n):
     l=d[o] or 6;o+=1
@@ -133,7 +133,7 @@ If your address isn't there:
 | `Could not find host: coolpool01...` | `meta_server1` still points at the old WON hosts |
 | Starts, never appears | `titan_root` or `titan_directory` missing — both are required |
 | `Parse error line N` | see [scs-notes.md](scs-notes.md) |
-| Nothing obvious | meta server unreachable on 15101: `nc -vz pool.segaonline.net 15101` |
+| Nothing obvious | meta server unreachable on 15101: `nc -vz shumania.ddns.net 15101` |
 
 Stopping your server removes it from the browser immediately.
 
