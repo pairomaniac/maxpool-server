@@ -30,9 +30,10 @@ registers — but the values are arbitrary, since they only set the path the
 entry is filed under. `CoolPool` is what consoles query, so there's no reason
 to change it.
 
-**`service_name`** is for the binary's own NT service support and must be
-unique per server on a machine. It isn't the name of a systemd or NSSM service
-wrapping it.
+**`service_name`** names the Windows service created by `ultra_server.exe
+-install`, and must be unique per server on a machine. It's read before the
+command line is parsed, so it always comes from the .scs. Under Wine there's no
+service manager, so it's unused and systemd does the job instead.
 
 **`filter_style`** picks the chat filter (0 WON, 1 beep, 2 comic). There's no
 way to disable filtering, and `clean_word_list` / `dirty_word_list` must point

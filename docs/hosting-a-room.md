@@ -55,14 +55,20 @@ Run it from the folder with the files:
 ultra_server.exe -run
 ```
 
-Nothing to install. To keep it running across reboots, put a shortcut in
-`shell:startup` or use [NSSM](https://nssm.cc/):
+Nothing to install. `-run` is required — without it the binary prints usage and
+tries to attach to the Service Control Manager, which looks like it quit for no
+reason.
+
+To keep it running across reboots, register it as a service with its own
+built-in support, from the same folder:
 
 ```
-nssm install MaxPool C:\maxpool\ultra_server.exe -run
-nssm set MaxPool AppDirectory C:\maxpool
-nssm start MaxPool
+ultra_server.exe -install
+net start "ultra_server"
 ```
+
+The service is named by `service_name` in the .scs, so change that first if you
+run more than one on a machine. `ultra_server.exe -remove` unregisters it.
 
 ## 3. Linux and macOS
 
