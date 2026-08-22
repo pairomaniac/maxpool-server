@@ -9,6 +9,9 @@
 Description=Max Pool game server (ultra_server.exe under Wine) - UDP 35000
 After=network-online.target
 Wants=network-online.target
+# cap restart loops rather than retrying a broken binary indefinitely
+StartLimitIntervalSec=300
+StartLimitBurst=5
 
 [Service]
 Type=simple
@@ -22,15 +25,33 @@ Environment=WINEDEBUG=-all
 # stops Wine popping up mono/gecko installer dialogs on a headless box
 Environment=WINEDLLOVERRIDES=mscoree=,mshtml=
 
-ExecStart=/usr/bin/wine ultra_server.exe -run
+# ultra_server.exe needs a console. Wine 9.0 moved console handling into a
+# separate conhost.exe process; without a terminal on the command's standard
+# I/O that console starts zero-sized and the binary aborts before its banner:
+#   runtime error R6025 - pure virtual function call
+# Wine 7.x handled consoles internally and did not care, so a unit that ran
+# for years breaks on distro upgrade with no config change. script(1) is in
+# util-linux and does nothing but allocate a pty. Do not drop the wrapper.
+# Xvfb does not help (display, not console), and Windows service mode
+# (-install / net start) dies the same way while wine's SCM reports RUNNING.
+ExecStart=/usr/bin/script -qefc "/usr/bin/wine ultra_server.exe -run" /dev/null
 
-# wineserver outlives the exe; kill it so a restart gets a clean prefix
-ExecStopPost=-/usr/bin/wineserver -k
+# wineserver -k terminates every process in the prefix, which is the whole
+# tree. Do not substitute pkill: systemd runs ExecStop through sh -c, so a
+# pattern matching ultra_server.exe matches that sh as well and it kills
+# itself before the cleanup runs, leaving the stop to hit TimeoutStopSec.
+ExecStop=-/usr/bin/wineserver -k
+
+# script -e propagates wine's exit status, so a deliberate stop exits 1.
+# Without this every clean stop leaves the unit in the failed state.
+SuccessExitStatus=1
 
 Restart=always
 RestartSec=10
-KillMode=mixed
-TimeoutStopSec=20
+# KillMode=mixed signals only the main process and relies on it reaping its
+# children; a killed wine never does, orphaning winedevice.exe onto init.
+KillMode=control-group
+TimeoutStopSec=15
 
 # Wine dislikes heavy sandboxing - no PrivateTmp, no MemoryDenyWriteExecute,
 # no RestrictAddressFamilies here

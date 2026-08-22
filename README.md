@@ -107,6 +107,22 @@ Max Players: 32 -- Max Games: 8
 `Creating transport ultra_server failed` means the socket didn't bind. `ss -lunp | grep 35000`
 confirms it did.
 
+`runtime error R6025 - pure virtual function call`, before the banner, means it has no console.
+Wine 9.0 runs console handling in a separate `conhost.exe`; without a terminal on the command's
+standard I/O that console starts zero-sized and startup aborts. Interactive runs are fine — even
+with stdin redirected — so this shows up under systemd, `nohup`, cron, or anything detached, and
+it appears on upgrade from Wine 7.x, which handled consoles internally and didn't care. Give it a
+pty:
+
+```
+script -qefc "wine ultra_server.exe -run" /dev/null
+```
+
+`systemd/maxpool-game.service.example` does this already. Two things that look like fixes and
+aren't: Xvfb (that cures the separate, harmless `nodrv_CreateWindow` display errors, not the
+console), and Windows service mode — under Wine, `-install` / `net start` reports RUNNING while
+the server dies without binding its port.
+
 ### Telnet console
 
 ```

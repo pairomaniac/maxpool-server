@@ -104,8 +104,24 @@ cd ~/maxpool/game
 wine ultra_server.exe -run
 ```
 
+If that aborts with `runtime error R6025 - pure virtual function call` before
+printing the banner, it has no console. Wine 9.0 and later run console handling
+in a separate `conhost.exe` process; without a terminal on the command's
+standard I/O it starts zero-sized and startup fails. Interactive runs are
+unaffected — this bites when the server is detached, under systemd, `nohup`,
+cron, or a CI runner. Give it a pty:
+
+```bash
+script -qefc "wine ultra_server.exe -run" /dev/null
+```
+
+Xvfb won't fix it (that addresses the harmless `nodrv_CreateWindow` display
+errors, a different subsystem), and the Windows service mode from section 2
+doesn't work under Wine: `net start` reports success while the server dies
+without binding UDP 35000.
+
 To run it as a service, use `systemd/maxpool-game.service.example` from this
-repository.
+repository. It includes the wrapper.
 
 ## 4. Check it worked
 
