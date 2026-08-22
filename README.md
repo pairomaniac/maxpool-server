@@ -123,6 +123,12 @@ aren't: Xvfb (that cures the separate, harmless `nodrv_CreateWindow` display err
 console), and Windows service mode — under Wine, `-install` / `net start` reports RUNNING while
 the server dies without binding its port.
 
+If `systemctl stop` takes the full `TimeoutStopSec` and ends in `Result=timeout`, the straggler is
+`winedevice.exe`, which ignores SIGTERM. It only shows up on instances that have been running a
+while, so a stop tested seconds after a start won't reproduce it. `KillSignal=SIGKILL` in the unit
+skips the pointless wait; nothing `wineserver -k` leaves behind holds state worth shutting down
+gracefully.
+
 ### Telnet console
 
 ```

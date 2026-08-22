@@ -43,14 +43,21 @@ ExecStart=/usr/bin/script -qefc "/usr/bin/wine ultra_server.exe -run" /dev/null
 ExecStop=-/usr/bin/wineserver -k
 
 # script -e propagates wine's exit status, so a deliberate stop exits 1.
-# Without this every clean stop leaves the unit in the failed state.
-SuccessExitStatus=1
+# Without this every clean stop leaves the unit in the failed state. SIGKILL
+# covers the race where the kill below lands before script notices its child
+# is gone; which of the two happens first varies run to run.
+SuccessExitStatus=1 SIGKILL
 
 Restart=always
 RestartSec=10
 # KillMode=mixed signals only the main process and relies on it reaping its
 # children; a killed wine never does, orphaning winedevice.exe onto init.
 KillMode=control-group
+# winedevice.exe ignores SIGTERM, so sending it only buys a TimeoutStopSec
+# wait before systemd escalates. Anything wineserver -k did not already stop
+# holds no state worth a graceful shutdown. Without this, stops of a
+# long-running instance take the full timeout and end in Result=timeout.
+KillSignal=SIGKILL
 TimeoutStopSec=15
 
 # Wine dislikes heavy sandboxing - no PrivateTmp, no MemoryDenyWriteExecute,
